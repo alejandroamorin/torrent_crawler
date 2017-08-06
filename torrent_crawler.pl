@@ -41,7 +41,6 @@ switch ($se) {
 		$BASE_URL 	= "http://tumejortorrent.com";
 		$SEARCH_URL = $BASE_URL . "/buscar";
 		$search		= "tumejortorrent";
-		
 	}
 	case 2 {
 		$BASE_URL	= "http://www.newpct.com";
