@@ -5,11 +5,8 @@ use LWP::UserAgent;
 use WWW::Mechanize;
 use Switch;
 
-# Config variables
-
 # Folder for torrent downloads
 my $DEST_FOLDER = "descargas";
-
 
 # ~~~~
 my $BASE_URL;
@@ -17,10 +14,21 @@ my $SEARCH_URL;
 my $search;
 my $web_call;
 my $selected_url;
+my $downloads_size;
+my $search_word;
 
 # Objects
 my $browser = LWP::UserAgent->new;
 my $mechanize = WWW::Mechanize->new();
+
+if ($ARGV[0]) {
+	$search_word = $ARGV[0];
+} else {
+	print "\n\tNo keyword provided, enter one: ";
+	my $keyword = <STDIN>;
+	chop($keyword);
+	$search_word = $keyword;
+}
 
 print "\n";
 print Line();
@@ -50,9 +58,7 @@ switch ($se) {
 	}
 }
 
-my @links = GetLinks($search);
-
-my $downloads_size;
+my @links = GetLinks();
 
 #
 # Intro menu
@@ -79,18 +85,17 @@ sub AskPage {
 #
 sub GetLinks {
 	my $response;
-	
+		
 	switch( $search ) {
 		case "tumejortorrent" { 
-			$response = $browser->post($SEARCH_URL, ['q' => $ARGV[0], 'submit' => 'submit']);
+			$response = $browser->post($SEARCH_URL, ['q' => $search_word, 'submit' => 'submit']);
 		}
 		case "newpct" {
-			$response = $browser->post($SEARCH_URL, ['q' => $ARGV[0], 'submit' => 'submit']);
+			$response = $browser->post($SEARCH_URL, ['q' => $search_word, 'submit' => 'submit']);
 		}
 		case "mejortorrent" {
-			$response = $browser->post($SEARCH_URL.$ARGV[0]);
+			$response = $browser->post($SEARCH_URL.$search_word);
 		}
-	
 	}
 	
 	return GetDownloads( $response->content, undef );
@@ -124,16 +129,16 @@ sub GetDownloads {
 	print Line();
 	
 	unless($round) {
-		print "\n|\t$downloads_size ocurrences found with '$ARGV[0]':\n|";
+		print "\n|\t$downloads_size ocurrences found with '$search_word':\n|";
 	}
 	
 	for (my $i=0; $i< $downloads_size; $i++) {
 		print "\n|\t(".($i+1)."): \t$clean_urls[$i]\n|";
 	}
+	
 	print Line();
 	print "\n";
 
-	
 	if ($downloads_size != 0) {
 		$selected_url = $BASE_URL.$clean_urls[(GetDownloadNumber()-1)];
 		my $response = $browser->post($selected_url);
@@ -152,7 +157,7 @@ sub GetDownloads_Tumejortorrent {
 	my @clean_urls;
 	
 	foreach my $line (@lines) {
-		if ($line =~ m/\<a href=\"$BASE_URL\/descargar/ && $line =~ $ARGV[0]) {
+		if ($line =~ m/\<a href=\"$BASE_URL\/descargar/ && $line =~ $search_word) {
 			push @downloads, $line;
 		}
 	}
@@ -167,6 +172,7 @@ sub GetDownloads_Tumejortorrent {
 			push @clean_urls, $_;
 		}
 	}
+	
 	return @clean_urls;
 }
 
@@ -179,8 +185,9 @@ sub GetDownloads_Newpct {
 	my @downloads;
 	my @urls;
 	my @clean_urls;
+	
 	foreach my $line (@lines) {
-		if ($line =~ m/\<a href=\"$BASE_URL\/descargar/ && $line =~ $ARGV[0]) {
+		if ($line =~ m/\<a href=\"$BASE_URL\/descargar/ && $line =~ $search_word) {
 			push @downloads, $line;
 		}
 	}
@@ -198,6 +205,7 @@ sub GetDownloads_Newpct {
 			push @clean_urls, $_;
 		}
 	}
+	
 	return @clean_urls;
 }
 
@@ -213,7 +221,7 @@ sub GetDownloads_Mejortorrent {
 	my @clean_urls;
 		
 	foreach my $line (@lines) {
-		if ($line =~ $ARGV[0]) {
+		if ($line =~ $search_word) {
 			unless ($line =~ "musica" || $line =~ "DOCTYPE") {
 				push @downloads, $line;
 			}
@@ -229,6 +237,7 @@ sub GetDownloads_Mejortorrent {
 	foreach (@urls) {
 		push @clean_urls, $_;
 	}
+	
 	return @clean_urls;
 }
 
@@ -251,6 +260,7 @@ sub GetDownloadNumber {
 	unless (($dn =~ m/[0-9]+/) && ($dn <= $downloads_size)) {
 		$dn = GetDownloadNumber();
 	}
+	
 	return $dn;
 }
 
@@ -261,9 +271,11 @@ sub GetTorrent {
 	my $web = shift;
 	my @lines = split /\n/, $web;
 	my $count;
+	
 	unless( -d $DEST_FOLDER ){
 		mkdir $DEST_FOLDER;
 	}
+	
 	switch ($search) {
 		case "tumejortorrent" { 
 			$count = GetTorrent_Tumejortorrent(@lines); 
@@ -290,6 +302,7 @@ sub GetTorrent {
 sub GetTorrent_Tumejortorrent {
 	my @lines = (@_);
 	my $count = 0;
+	
 	foreach my $line (@lines) {
 		if ($line =~ m/window.location.href/) {
 			$line =~ s/^\s+window.location.href = \"//;
@@ -297,6 +310,7 @@ sub GetTorrent_Tumejortorrent {
 			$count = DownloadFile($line);				
 		}
 	}
+	
 	return $count;
 }
 
@@ -306,6 +320,7 @@ sub GetTorrent_Tumejortorrent {
 sub GetTorrent_Newpct {
 	my @lines = (@_);
 	my $count = 0;
+	
 	foreach my $line (@lines) {
 		if ($line =~ m/.torrent\'/) {
 			$line =~ s/.+\<a href=\'//;
@@ -313,6 +328,7 @@ sub GetTorrent_Newpct {
 			$count = DownloadFile($line);		
 		}
 	}
+	
 	return $count;
 }
 
@@ -322,6 +338,7 @@ sub GetTorrent_Newpct {
 sub GetTorrent_Mejortorrent {
 	my @lines = (@_);
 	my $count = 0;
+	
 	foreach my $line (@lines) {
 		$line =~ s/.+\<a href=\'//;
 		if ($line =~ m/.torrent\'/) {
@@ -339,6 +356,7 @@ sub GetTorrent_Mejortorrent {
 			}
 		}
 	}
+	
 	return $count;
 }
   
