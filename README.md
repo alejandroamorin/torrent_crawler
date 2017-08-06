@@ -6,7 +6,9 @@ Project with several crawlers for different torrent pages
 - Mechanize
 
 # How to run torrent_crawler
+```
 perl torrent_crawler.pl keyword
+```
 
 # Search engines available
 - TuMejorTorrent
