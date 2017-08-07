@@ -17,9 +17,21 @@ my $selected_url;
 my $downloads_size;
 my $search_word;
 
+my $HYPHEN 	= '-';
+my $PLUS	= '+';
+
 # Objects
 my $browser = LWP::UserAgent->new;
 my $mechanize = WWW::Mechanize->new();
+
+# 	url (0), search (1), separator (2), type of search (3), type of download (4), type of torrent (5)
+my @WEBS = (
+	['http://tumejortorrent.com', 	'/buscar', 								$HYPHEN, 	"1",	"1",	"1"],
+	['http://www.newpct.com', 		'/buscar-descargas/', 					$HYPHEN, 	"1",	"2",	"2"],
+	['http://www.mejortorrent.com', '/secciones.php?sec=buscador&valor=', 	$PLUS, 		"2",	"3",	"3"],
+	['http://torrentlocura.com', 	'/buscar', 								$HYPHEN, 	"1",	"1",	"1"],
+	['http://torrentrapid.com', 	'/buscar', 								$HYPHEN, 	"1",	"1",	"1"],
+);
 
 if ($ARGV[0]) {
 	$search_word = $ARGV[0];
@@ -30,31 +42,20 @@ if ($ARGV[0]) {
 	$search_word = $keyword;
 }
 
+my $size = Get2DArraySize(@WEBS);
+
 print "\n";
 print Line();
 my $se = AskPage();
 print Line();
 print "\n";
 
-switch ($se) {
-	case 1 { 
-		$BASE_URL 	= "http://tumejortorrent.com";
-		$SEARCH_URL = $BASE_URL . "/buscar";
-		$search		= "tumejortorrent";
-	}
-	case 2 {
-		$BASE_URL	= "http://www.newpct.com";
-		$SEARCH_URL = $BASE_URL . "/buscar-descargas/";
-		$search		= "newpct";
-	}
-	case 3 {
-		$BASE_URL	= "http://www.mejortorrent.com";
-		$SEARCH_URL = $BASE_URL . "/secciones.php?sec=buscador&valor=";
-		$search		= "mejortorrent";
-	}
-	else {
-		die "\nQuitting." 
-	}
+if ($se eq "C" || $se eq "c") {
+	die "\nQuitting." 
+} else {
+	$se = $se - 1;
+	$BASE_URL 	= $WEBS[$se][0];
+	$SEARCH_URL = $BASE_URL.$WEBS[$se][1];
 }
 
 my @links = GetLinks();
@@ -64,15 +65,18 @@ my @links = GetLinks();
 #
 sub AskPage {
 	print "\n\t\tIn which page do you want to search?: ";
-	print "\n\t\t\t(1): http://tumejortorrent.com";
-	print "\n\t\t\t(2): http://www.newpct.com";
-	print "\n\t\t\t(3): http://www.mejortorrent.com";
+	
+	for (my $i=0; $i < $size; $i++) {
+		my $x = $i+1;
+		print "\n\t\t\t($x): ".$WEBS[$i][0];
+	}
+
 	print "\n";
 	print "\n\t\t\t(C): Cancel\n\t\t";
 	my $pn = <STDIN>;
 	chop($pn);
 	
-	unless ($pn =~ m/[cC1-3]+/) {
+	unless ($pn =~ m/[cC1-5]+/) {
 		$pn = AskPage();
 	}
 	
@@ -84,16 +88,19 @@ sub AskPage {
 #
 sub GetLinks {
 	my $response;
-		
-	switch( $search ) {
-		case "tumejortorrent" { 
-			$response = $browser->post($SEARCH_URL, ['q' => $search_word, 'submit' => 'submit']);
+	
+	my $separator 		= $WEBS[$se][2];
+	my $type_of_search 	= $WEBS[$se][3];
+	
+	$search_word = ReplaceSpaces($search_word, $separator);
+	
+	switch ($type_of_search) {
+		case 1 { 
+			$response = $browser->post($SEARCH_URL, ['q' => $search_word, 'submit' => 'submit']); 
 		}
-		case "newpct" {
-			$response = $browser->post($SEARCH_URL, ['q' => $search_word, 'submit' => 'submit']);
-		}
-		case "mejortorrent" {
+		case 2 {
 			$response = $browser->post($SEARCH_URL.$search_word);
+			$search_word = ReplaceSpaces($search_word, $HYPHEN);
 		}
 	}
 	
@@ -108,15 +115,17 @@ sub GetDownloads {
 	my $round = shift;
 	my @clean_urls;
 
-	switch( $search ) {
-		case "tumejortorrent" {
-			@clean_urls = GetDownloads_Tumejortorrent($web);
+	my $type_of_download = $WEBS[$se][4];
+
+	switch( $type_of_download ) {
+		case 1 {
+			@clean_urls = GetDownloads1($web);	
 		}
-		case "newpct" {
-			@clean_urls = GetDownloads_Newpct($web);
+		case 2 {
+			@clean_urls = GetDownloads2($web, $round);
 		}
-		case "mejortorrent" {
-			@clean_urls = GetDownloads_Mejortorrent($web, $round);
+		case 3 {
+			@clean_urls = GetDownloads3($web, $round);
 		}
 	}
 	
@@ -131,7 +140,7 @@ sub GetDownloads {
 		print "\n|\t$downloads_size ocurrences found with '$search_word':\n|";
 	}
 	
-	for (my $i=0; $i< $downloads_size; $i++) {
+	for (my $i=0; $i<$downloads_size; $i++) {
 		print "\n|\t(".($i+1)."): \t$clean_urls[$i]\n|";
 	}
 	
@@ -146,9 +155,9 @@ sub GetDownloads {
 }
 
 #
-# Get clean url downloads from tumejortorrent.com
+# Get clean url downloads1
 #
-sub GetDownloads_Tumejortorrent {
+sub GetDownloads1 {
 	my $web = shift;
 	my @lines = split /\n/, $web;
 	my @downloads;
@@ -156,7 +165,8 @@ sub GetDownloads_Tumejortorrent {
 	my @clean_urls;
 	
 	foreach my $line (@lines) {
-		if ($line =~ m/\<a href=\"$BASE_URL\/descargar/ && $line =~ $search_word) {
+		$line = lc $line;
+		if ($line =~ m/\<a href=\"$BASE_URL\/descargar/ && $line =~ lc $search_word) {
 			push @downloads, $line;
 		}
 	}
@@ -176,9 +186,9 @@ sub GetDownloads_Tumejortorrent {
 }
 
 #
-# Get clean url downloads from newpct.com
+# Get clean url downloads2
 #
-sub GetDownloads_Newpct {
+sub GetDownloads2 {
 	my $web = shift;
 	my @lines = split /\n/, $web;
 	my @downloads;
@@ -186,7 +196,8 @@ sub GetDownloads_Newpct {
 	my @clean_urls;
 	
 	foreach my $line (@lines) {
-		if ($line =~ m/\<a href=\"$BASE_URL\/descargar/ && $line =~ $search_word) {
+		$line = lc $line;
+		if ($line =~ m/\<a href=\"$BASE_URL\/descargar/ && $line =~ lc $search_word) {
 			push @downloads, $line;
 		}
 	}
@@ -209,9 +220,9 @@ sub GetDownloads_Newpct {
 }
 
 #
-# Get clean url downloads from mejortorrent.com
+# Get clean url downloads3
 #
-sub GetDownloads_Mejortorrent {
+sub GetDownloads3 {
 	my $web = shift;
 	my $round = shift;
 	my @lines = split /<a href='/, $web;
@@ -220,13 +231,13 @@ sub GetDownloads_Mejortorrent {
 	my @clean_urls;
 		
 	foreach my $line (@lines) {
-		if ($line =~ $search_word) {
+		$line = lc $line;
+		if ($line =~ lc $search_word) {
 			unless ($line =~ "musica" || $line =~ "DOCTYPE") {
 				push @downloads, $line;
 			}
 		}
 	}
-
 	foreach my $download (@downloads) {
 		$download = substr($download, 0, index($download, "'")) if $round;
 		$download =~ s/\'(.+)// unless $round;
@@ -275,15 +286,17 @@ sub GetTorrent {
 		mkdir $DEST_FOLDER;
 	}
 	
-	switch ($search) {
-		case "tumejortorrent" { 
-			$count = GetTorrent_Tumejortorrent(@lines); 
+	my $type_of_torrent = $WEBS[$se][5];
+
+	switch( $type_of_torrent ) {
+		case 1 {
+			$count = GetTorrent1(@lines);
 		}
-		case "newpct" { 
-			$count = GetTorrent_Newpct(@lines); 
+		case 2 {
+			$count = GetTorrent2(@lines);
 		}
-		case "mejortorrent" { 
-			$count = GetTorrent_Mejortorrent(@lines);
+		case 3 {
+			$count = GetTorrent3(@lines);
 		}
 	}
 	
@@ -296,9 +309,9 @@ sub GetTorrent {
 }
 
 #
-# Get torrent from tumejortorrent.com
+# Get torrent1
 #
-sub GetTorrent_Tumejortorrent {
+sub GetTorrent1 {
 	my @lines = (@_);
 	my $count = 0;
 	
@@ -308,15 +321,20 @@ sub GetTorrent_Tumejortorrent {
 			$line =~ s/\"\;//;
 			$count = DownloadFile($line);				
 		}
+		elsif ($line =~ m/\"txt_password\"/) {
+			$line =~ s/^\s+.+value=\"//;
+			$line =~ s/\".+//;
+			print "\n\tPassword for torrent found: $line\n";
+		}
 	}
 	
 	return $count;
 }
 
 #
-# Get torrent from newpct.com
+# Get torrent2
 #
-sub GetTorrent_Newpct {
+sub GetTorrent2 {
 	my @lines = (@_);
 	my $count = 0;
 	
@@ -332,9 +350,9 @@ sub GetTorrent_Newpct {
 }
 
 #
-# Get torrent from mejortorrent.com
+# Get torrent3
 #
-sub GetTorrent_Mejortorrent {
+sub GetTorrent3 {
 	my @lines = (@_);
 	my $count = 0;
 	
@@ -366,8 +384,8 @@ sub DownloadFile {
 	my $line = shift;
 	$mechanize->get( $line );		
 	my $filename = Sanitize( $selected_url );
-	$mechanize->save_content( $DEST_FOLDER."\\".$filename.".torrent" );
-	print "\n\tDownloaded $filename.torrent in $DEST_FOLDER/\n";
+	$mechanize->save_content( $DEST_FOLDER."/".$filename.".torrent" );
+	print "\n\tDownloaded $filename.torrent in $DEST_FOLDER/\n\n";
 	return 1;
 }
 
@@ -378,6 +396,30 @@ sub Sanitize {
 	my $name = shift;
 	$name =~ tr|:/|_|;
 	return $name;
+}
+
+#
+# Replace spaces for several words search
+#
+sub ReplaceSpaces {
+	my $word = shift;
+	my $replace_character = shift;
+	$word =~ s/ /$replace_character/g;
+	$word =~ tr/"'/ /;
+	$word =~ tr/ //ds;
+	return $word;
+}
+
+#
+# Get 2D array column size
+#
+sub Get2DArraySize {
+	my @array = (@_);
+	my $size = 0;
+	for (my $i=0; $i <= scalar (@{$array[0]}); $i++) {
+		$size += 1 if $array[$i][0];
+	}
+	return $size;
 }
 
 #
