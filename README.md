@@ -2,7 +2,7 @@
 Project with several crawlers for different torrent pages
 
 # Version
-v0.1
+v0.2
 
 # Dependencies:
 - Switch
@@ -10,10 +10,18 @@ v0.1
 
 # How to run torrent_crawler
 ```
-perl torrent_crawler.pl keyword
+perl torrent_crawler.pl "several keywords"
+```
+```
+perl torrent_crawler.pl 'several keywords'
+```
+```
+perl torrent_crawler.pl 'keyword'
 ```
 
-# Search engines available
+# Webs available
 - TuMejorTorrent
 - Newpct
 - MejorTorrent
+- TorrentLocura
+- TorrentRapid
