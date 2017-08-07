@@ -73,6 +73,8 @@ sub AskPage {
 
 	print "\n";
 	print "\n\t\t\t(C): Cancel\n\t\t";
+	
+	print "\n\t\t";
 	my $pn = <STDIN>;
 	chop($pn);
 	
@@ -122,7 +124,7 @@ sub GetDownloads {
 			@clean_urls = GetDownloads1($web);	
 		}
 		case 2 {
-			@clean_urls = GetDownloads2($web, $round);
+			@clean_urls = GetDownloads2($web);
 		}
 		case 3 {
 			@clean_urls = GetDownloads3($web, $round);
@@ -233,7 +235,8 @@ sub GetDownloads3 {
 	foreach my $line (@lines) {
 		$line = lc $line;
 		if ($line =~ lc $search_word) {
-			unless ($line =~ "musica" || $line =~ "DOCTYPE") {
+			print "\nLinea: ".$line;
+			unless ($line =~ "musica" || $line =~ "DOCTYPE" || $line =~ "juego-descargar") {
 				push @downloads, $line;
 			}
 		}
