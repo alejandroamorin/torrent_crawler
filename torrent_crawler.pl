@@ -13,7 +13,7 @@ my $BASE_URL;
 my $SEARCH_URL;
 my $search;
 my $web_call;
-my $selected_url;
+my $selected_url = "";
 my $downloads_size;
 my $search_word;
 my @urls_all;
@@ -33,6 +33,7 @@ my @WEBS = (
 	['http://www.mejortorrent.com', '/secciones.php?sec=buscador&valor=', 	$PLUS, 		"2",	"3",	"3"],
 	['http://torrentlocura.com', 	'/buscar', 								$HYPHEN, 	"1",	"1",	"1"],
 	['http://torrentrapid.com', 	'/buscar', 								$HYPHEN, 	"1",	"1",	"1"],
+	['http://www.mejorenvo.com',	'/secciones.php?sec=buscador&q=',		$PLUS,		"2",	"3",	"4"],
 );
 
 if ($ARGV[0]) {
@@ -151,7 +152,7 @@ sub GetDownloadsURL {
 	}
 	
 	@clean_urls = Distinct(@clean_urls);
-	
+
 	return @clean_urls;
 }
 
@@ -262,26 +263,43 @@ sub GetDownloadsURL3 {
 	my @downloads;
 	my @urls;
 	my @clean_urls;
-		
+	
+	my @avoid_lines = (
+		"musica",
+		"doctype",
+		"juego-descargar",
+		"contacto",
+		"ayuda",
+	);
+	
+
+	my $avoid_lines;
 	foreach my $line (@lines) {
 		$line = lc $line;
 		if ($line =~ lc $search_word) {
-			unless ($line =~ "musica" || $line =~ "doctype" || $line =~ "juego-descargar") {
+			$avoid_lines .= join "|", @avoid_lines;
+			unless ($line =~ m/$avoid_lines/) {
 				push @downloads, $line;
 			}
 		}
 	}
 	foreach my $download (@downloads) {
+		$download =~ tr/ \r\n//ds;
 		$download = substr($download, 0, index($download, "'")) if $round;
 		$download =~ s/\'(.+)// unless $round;
-		push @urls, $download;
+		
+		unless ($BASE_URL.$download eq $selected_url) {
+			push @urls, $download;
+		}
 	}
 		
 	foreach my $url (@urls) {
-		if ($initial_se eq "0") {
-			$url = $BASE_URL.$url;
+		if ($url =~ m/^\//) {
+			if ($initial_se eq "0") {
+				$url = $BASE_URL.$url;
+			}
+			push @clean_urls, $url;
 		}
-		push @clean_urls, $url;
 	}
 
 	return @clean_urls;
@@ -339,6 +357,9 @@ sub GetTorrent {
 		case 3 {
 			$count = GetTorrent3(@lines);
 		}
+		case 4 {
+			$count = GetTorrent4(@lines);
+		}
 	}
 	
 	if ($web_call) { $count = 1; } 
@@ -380,7 +401,7 @@ sub GetTorrent2 {
 	my $count = 0;
 	
 	foreach my $line (@lines) {
-		if ($line =~ m/.torrent\'/) {
+		if ($line =~ m/\.torrent\'/) {
 			$line =~ s/.+\<a href=\'//;
 			$line =~ s/\'.+//;
 			$count = DownloadFile($line);		
@@ -399,7 +420,7 @@ sub GetTorrent3 {
 	
 	foreach my $line (@lines) {
 		$line =~ s/.+\<a href=\'//;
-		if ($line =~ m/.torrent\'/) {
+		if ($line =~ m/\.torrent\'/) {
 			$line =~ s/\'.+//;
 			$selected_url = $BASE_URL."/".$line;
 			$count = DownloadFile($BASE_URL."/".$line, $BASE_URL."/".$line);
@@ -418,7 +439,24 @@ sub GetTorrent3 {
 	
 	return $count;
 }
-  
+
+#
+# Get torrent4
+#
+sub GetTorrent4 {
+	my @lines = (@_);
+	my $count = 0;
+	foreach my $line (@lines) {
+		$line =~ s/.+\<a href=\'//;
+		if ($line =~ m/\/uploads\/torrents\//) {
+			$line =~ s/\'.+//;
+			$count = DownloadFile($BASE_URL."/".$line, $selected_url);
+		}
+	}
+	
+	return $count;
+}
+
 #
 # Download file from url
 #
@@ -473,7 +511,6 @@ sub GetElementPositionInArray {
 
 	return $position;
 }
-
 
 #
 # Get URL BASE from $selected_url

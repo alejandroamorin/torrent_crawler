@@ -2,7 +2,7 @@
 Project with several crawlers for different torrent pages
 
 # Version
-v0.3
+v0.4
 
 # Dependencies:
 - Switch
@@ -25,3 +25,4 @@ perl torrent_crawler.pl 'keyword'
 - MejorTorrent
 - TorrentLocura
 - TorrentRapid
+- MejorEnVO
