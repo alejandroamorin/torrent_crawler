@@ -1,8 +1,8 @@
+![Versión](https://img.shields.io/badge/Torrent%20Crawler-v0.4-red.svg?style=plastic)
+![License](https://img.shields.io/badge/License-LGPL-yellowgreen.svg?style=plastic)
+
 # Torrent Crawler
 Project with several crawlers for different torrent pages
-
-# Version
-v0.4
 
 # Dependencies:
 - Switch
