@@ -4,7 +4,7 @@
 ## Torrent Crawler
 Several crawlers for several torrent pages
 
-![Author](https://img.shields.io/badge/Author-%20Alex%20AN%20|%20alejandro.amorin@gmail.com%20|%20@hacklejandro-blue.svg?style=plastic)
+![Author](https://img.shields.io/badge/Author-%20Alex%20AN%20|%20alejandro.amorin@gmail.com%20|%20@alex23an-blue.svg?style=plastic)
 
 ## Dependencies:
 - Switch
